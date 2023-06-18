@@ -4,6 +4,9 @@ dependencies:
   '@enjoyjs/node-mecab':
     specifier: ^0.5.0
     version: 0.5.0
+  mfm-js:
+    specifier: ^0.23.3
+    version: 0.23.3
   misskey-js:
     specifier: ^0.0.15
     version: 0.0.15
@@ -358,6 +361,12 @@ packages:
     engines: {node: '>= 8'}
     dev: false
 
+  /mfm-js@0.23.3:
+    resolution: {integrity: sha512-o8scYmbey6rMUmWAlT3k3ntt6khaCLdxlmHhAWV5wTTMj2OK1atQvZfRUq0SIVm1Jig08qlZg/ps71xUqrScNA==}
+    dependencies:
+      twemoji-parser: 14.0.0
+    dev: false
+
   /micromatch@4.0.5:
     resolution: {integrity: sha512-DMy+ERcEW2q8Z2Po+WNXuw3c5YaUSFjAO5GsJqfEl7UjvtIuFKO6ZrKvcItdy98dwFI2N1tg3zNIdKaQT+aNdA==}
     engines: {node: '>=8.6'}
@@ -550,6 +559,10 @@ packages:
       minimist: 1.2.8
       strip-bom: 3.0.0
     dev: true
+
+  /twemoji-parser@14.0.0:
+    resolution: {integrity: sha512-9DUOTGLOWs0pFWnh1p6NF+C3CkQ96PWmEFwhOVmT3WbecRC+68AIqpsnJXygfkFcp4aXbOp8Dwbhh/HQgvoRxA==}
+    dev: false
 
   /typescript-transform-paths@3.4.6(typescript@5.0.4):
     resolution: {integrity: sha512-qdgpCk9oRHkIBhznxaHAapCFapJt5e4FbFik7Y4qdqtp6VyC3smAIPoDEIkjZ2eiF7x5+QxUPYNwJAtw0thsTw==}
