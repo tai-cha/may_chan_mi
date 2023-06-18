@@ -10,9 +10,6 @@ const emojiRegex = /:[0-9A-z_\-]+:/
 
 const inputText =``;
 
-// Generate a MFM tree from the full MFM text.
-const mfmTree = mfm.parse(inputText);
-
 function sanitizeLoop<T extends mfm.MfmNode['type'], N extends mfm.NodeType<T>>(node: N):Array<N> {
   const inlineTypes: mfm.MfmNode['type'][] = ['unicodeEmoji', 'emojiCode', 'bold', 'small', 'italic', 'strike', 'inlineCode', 'mathInline', 'mention', 'hashtag', 'url', 'link', 'fn', 'plain', 'text']
   function isMfmInline(n: mfm.MfmNode): n is mfm.MfmInline {
@@ -27,7 +24,7 @@ function sanitizeLoop<T extends mfm.MfmNode['type'], N extends mfm.NodeType<T>>(
   if (['text', 'emojiCode', 'unicodeEmoji'].includes(node.type)) {
     return [node]
   }
-  if ([''])
+
   if (node.children && node.children.length > 0) {
     if (isMfmNodeArray(node.children)) {
       let children:Array<N> = node.children
@@ -43,15 +40,6 @@ function sanitizeLoop<T extends mfm.MfmNode['type'], N extends mfm.NodeType<T>>(
 function sanitize(nodes:Array<mfm.MfmNode>):Array<mfm.MfmNode> {
   return nodes.map(n => sanitizeLoop(n)).flat()
 }
-
-// Reverse to a MFM text from the MFM tree.
-const text = mfm.toString(mfmTree);
-
-console.log(mfmTree)
-console.log("==original==")
-//console.log(text)
-
-let sanitized = sanitize(mfmTree)
 
 function tokenize(mfm:Array<mfm.MfmNode>):Array<string> {
   let tokens:Array<string | undefined> = mfm.map(node => {
@@ -135,6 +123,18 @@ function chunkToString(chunks:Array<Array<String>>):string {
     chunks.slice(1).map(t => t.slice(1).join('')).join('')
   ].join('')
 }
+
+// Generate a MFM tree from the full MFM text.
+const mfmTree = mfm.parse(inputText);
+
+// Reverse to a MFM text from the MFM tree.
+const text = mfm.toString(mfmTree);
+
+console.log(mfmTree)
+console.log("==original==")
+//console.log(text)
+
+let sanitized = sanitize(mfmTree)
 
 //console.log(tokenize(sanitized))
 const tokenChunk = createTokenChunk(tokenize(sanitized))
