@@ -1,0 +1,5 @@
+.env.development
+/node_modules
+/dist
+.vscode
+*.env.template.local
