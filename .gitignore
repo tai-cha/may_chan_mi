@@ -3,3 +3,4 @@
 /dist
 .vscode
 *.env.template.local
+log.txt
