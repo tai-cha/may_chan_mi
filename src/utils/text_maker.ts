@@ -41,8 +41,8 @@ function tokenize(mfm:Array<mfm.MfmNode>):Array<string> {
   let tokens:Array<string | undefined> = mfm.map(node => {
     if (node.type == 'text') {
       let options = {}
-      if (Config.mecabDicDir) options = {...options, dicdir: config.mecabDicDir}
-      return wakatiSync(node.props.text, { dicdir:  }).flat()
+      if (Config.mecabDicDir) options = {...options, dicdir: Config.mecabDicDir}
+      return wakatiSync(node.props.text, options).flat()
     }
     if (node.type == 'unicodeEmoji') {
       return node.props.emoji
