@@ -11,4 +11,6 @@ export const server:Server = {
 
 export const postDisabled = process.env?.POST_DISABLED?.toUpperCase() == "TRUE" ? true : false
 
-export default {server, postDisabled}
+export const mecabDicDir = process.env?.MECAB_DIC_DIR
+
+export default {server, postDisabled, mecabDicDir}

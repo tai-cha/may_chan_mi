@@ -2,6 +2,7 @@ import * as mfm from 'mfm-js'
 import { isMfmBlock } from 'mfm-js/built/node';
 import { wakatiSync } from "@enjoyjs/node-mecab"
 import { isStringArray } from '@/utils/type_checker';
+import * as Config from '@/utils/config'
 
 const emojiRegex = /:[0-9A-z_\-]+:/
 
@@ -39,7 +40,9 @@ export function sanitize(nodes:Array<mfm.MfmNode>):Array<mfm.MfmNode> {
 function tokenize(mfm:Array<mfm.MfmNode>):Array<string> {
   let tokens:Array<string | undefined> = mfm.map(node => {
     if (node.type == 'text') {
-      return wakatiSync(node.props.text, { dicdir: '/home/linuxbrew/.linuxbrew/lib/mecab/dic/mecab-ipadic-neologd' }).flat()
+      let options = {}
+      if (Config.mecabDicDir) options = {...options, dicdir: config.mecabDicDir}
+      return wakatiSync(node.props.text, { dicdir:  }).flat()
     }
     if (node.type == 'unicodeEmoji') {
       return node.props.emoji
