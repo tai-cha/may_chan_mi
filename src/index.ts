@@ -31,6 +31,6 @@ async function create():Promise<string | null> {
 (async ()=>{
   let text = await create()
   if (text !== null) {
-    Misskey.postNote(text, {visibility: "followers"})
+    Misskey.postNote(text)
   }
 })()
