@@ -12,6 +12,8 @@ const raiseOmittedTimeline = (notes:Note[]) => {
   }
 }
 
+const getLastNote = (notes:Array<Note>) => notes.slice(-1)[0];
+
 const getNotes = async ():Promise<Array<Note>> => {
   const options = {
     excludeNsfw: false,
@@ -29,6 +31,32 @@ const getNotes = async ():Promise<Array<Note>> => {
     { retries: 10, onRetry: ()=> { console.log("retrying...") } }
   )
   if (notes.length === 0) return []
+
+  while (notes.length > 300) {
+    const newNotes = await retry(async ()=> {
+        console.log(`Getting notes: {sinceId: ${getLastNote(notes).id}}`)
+        const req = await Misskey.request('notes/hybrid-timeline', {
+          sinceId: getLastNote(notes).id,
+          ...options
+        })
+
+        raiseOmittedTimeline(req)
+
+        return req
+      }, {
+        retries: 10,
+        minTimeout: 5000,
+        onRetry: (err, num)=> {
+          console.log(`get note retrying...${num}`)
+          console.debug(err)
+        }
+      }
+    )
+    notes = notes.concat(newNotes)
+    console.log(notes.length)
+    await new Promise((resolve) => setTimeout(resolve, 700))
+  }
+
   return notes
 }
 
