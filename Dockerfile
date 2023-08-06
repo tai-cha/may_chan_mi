@@ -8,6 +8,8 @@ RUN ./install-mecab-docker.sh
 
 RUN --mount=type=secret,id=_env,dst=/etc/secrets/.env cat /etc/secrets/.env
 
+ENV MECAB_DIC_DIR="/home/lib/mecab/dic/mecab-ipadic-neologd"
+
 # Install pnpm
 RUN npm i -g pnpm
 
