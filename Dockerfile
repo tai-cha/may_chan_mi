@@ -16,6 +16,10 @@ COPY package.json pnpm-lock.yaml /app/
 
 WORKDIR /app/
 
+RUN pnpm install
+
+COPY . /app/
+
 RUN pnpm build
 
 CMD pnpm start
