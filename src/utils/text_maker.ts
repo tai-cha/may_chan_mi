@@ -124,9 +124,6 @@ function chunkToString(chunks:Array<Array<String>>):string {
   if (chunks.length < 1) return ''
   if (chunks.length === 1) return chunks[0].join('')
 
-  console.log(chunks[0].join(''))
-  console.log(chunks.slice(1))
-
   return [
     chunks[0].join(''),
     chunks.slice(1).map(t => t.slice(1)?.join('') || '').join('')
