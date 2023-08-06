@@ -102,7 +102,7 @@ function createResultChunk(chunks:Array<Array<string>>, start: Array<string>) {
   let result = [start]
 
   let cnt = 0
-  while(cnt < 20 && !["\n",'。',"　"].includes(result[result.length -1][result[result.length -1].length - 1])) {
+  while(cnt < 20 && !["\n",'。',"　"].includes(result?.slice(-1)?.[0]?.slice(-1)?.[0])) {
     const lastChunk = result[result.length - 1]
     const lastWord = lastChunk[lastChunk.length - 1]
     let selected = selectChunk(chunks, lastWord)
