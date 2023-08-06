@@ -4,6 +4,14 @@ import { Misskey } from '@/utils/misskey'
 import retry from 'async-retry'
 import { isStringArray } from '@/utils/type_checker';
 
+const raiseOmittedTimeline = (notes:Note[]) => {
+  // misskey.ioでノートが取得できない場合にエラー扱いしてリトライするためにエラーを起こす
+  if (notes.filter(note => note.userId === '7rkr4nmz19' && note.text?.includes('読み込み時のタイムライン表示を簡略化')).length >= 2) {
+    console.debug('高負荷のためTL取得不可')
+    throw new Error('omitted timeline')
+  }
+}
+
 const getNotes = async ():Promise<Array<Note>> => {
   const options = {
     excludeNsfw: false,
@@ -11,8 +19,14 @@ const getNotes = async ():Promise<Array<Note>> => {
   }
   console.log('loading notes...')
   let notes = await retry(
-    async ()=> await Misskey.request('notes/hybrid-timeline', options),
-    { retries: 5, onRetry: ()=> { console.log("retrying...") } }
+    async ()=> {
+      const req = await Misskey.request('notes/hybrid-timeline', options)
+
+      raiseOmittedTimeline(req)
+      
+      return req
+    },
+    { retries: 10, onRetry: ()=> { console.log("retrying...") } }
   )
   if (notes.length === 0) return []
   return notes
@@ -31,6 +45,20 @@ async function create():Promise<string | null> {
 (async ()=>{
   let text = await create()
   if (text !== null) {
-    Misskey.postNote(text)
+    await retry(async() => {
+      return await Misskey.postNote(text || '')
+    }, {
+      retries: 15,
+      minTimeout: 5000,
+      onRetry: (err, num)=> {
+        console.log(`Retrying: note posting...${num}`)
+        console.debug(err)
+      }
+    }).then(async n => {
+      console.log('投稿完了')
+    }).catch(err => {
+      console.log("ノート投稿の失敗が既定の回数を超えました")
+      console.log(err)
+    })
   }
 })()
