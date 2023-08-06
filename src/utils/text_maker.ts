@@ -2,7 +2,10 @@ import * as mfm from 'mfm-js'
 import { isMfmBlock } from 'mfm-js/built/node';
 import { wakatiSync } from "@enjoyjs/node-mecab"
 import { isStringArray } from '@/utils/type_checker';
-import * as Config from '@/utils/config'
+import Config from '@/utils/config'
+
+// load env
+Config
 
 const emojiRegex = /:[0-9A-z_\-]+:/
 
@@ -63,8 +66,9 @@ function tokenize(mfm:Array<mfm.MfmNode>):Array<string> {
 }
 
 function createTokenChunk(tokens: Array<string>):Array<Array<string>> {
+  const CHUNK_SIZE = 3
   if (!tokens || tokens.length <= 0) return []
-  if (tokens.length < 2) return [tokens]
+  if (tokens.length < CHUNK_SIZE) return [[...tokens]]
   let lines:Array<Array<string>> = [[]]
   tokens.forEach((t)=> {
     const lastIdx = lines.length - 1
@@ -76,8 +80,8 @@ function createTokenChunk(tokens: Array<string>):Array<Array<string>> {
   let chunks:Array<Array<string>> = []
   lines.forEach(line=>{
     line.forEach((token, i, arr) =>{
-      if (i > arr.length - 2 && token === "\n") return
-      let res = arr.slice(i, i + 2)
+      if (i > arr.length - CHUNK_SIZE && token === "\n") return
+      let res = arr.slice(i, i + CHUNK_SIZE)
       res = res.map((word, idx) => {
         if ( idx > 0 && res[idx - 1].match(emojiRegex) && word.match(/^[0-9A-z]+.*/) ) {
           return` ${word}`
@@ -102,8 +106,9 @@ function createResultChunk(chunks:Array<Array<string>>, start: Array<string>) {
   let result = [start]
 
   let cnt = 0
-  while(cnt < 20 && !["\n",'。',"　"].includes(result?.slice(-1)?.[0]?.slice(-1)?.[0])) {
-    const lastChunk = result[result.length - 1]
+  while(cnt < 50 && !["\n",'。',"　"].includes(result?.slice(-1)?.[0]?.slice(-1)?.[0])) {
+    const lastChunk = result.slice(-1)?.[0];
+    if (lastChunk === undefined) break;
     const lastWord = lastChunk[lastChunk.length - 1]
     let selected = selectChunk(chunks, lastWord)
     if (lastWord.match(emojiRegex) && selected?.[1]?.match(/^[0-9A-z]+.*/)) {
@@ -116,9 +121,15 @@ function createResultChunk(chunks:Array<Array<string>>, start: Array<string>) {
 }
 
 function chunkToString(chunks:Array<Array<String>>):string {
+  if (chunks.length < 1) return ''
+  if (chunks.length === 1) return chunks[0].join('')
+
+  console.log(chunks[0].join(''))
+  console.log(chunks.slice(1))
+
   return [
     chunks[0].join(''),
-    chunks.slice(1).map(t => t.slice(1).join('')).join('')
+    chunks.slice(1).map(t => t.slice(1)?.join('') || '').join('')
   ].join('')
 }
 
