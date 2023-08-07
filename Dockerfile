@@ -6,7 +6,7 @@ WORKDIR /
 COPY ./install-mecab-docker.sh /install-mecab-docker.sh
 RUN ./install-mecab-docker.sh
 
-ENV MECAB_DIC_DIR="/home/lib/mecab/dic/mecab-ipadic-neologd"
+ENV MECAB_DIC_DIR="/usr/lib/x86_64-linux-gnu/mecab/dic/mecab-ipadic-neologd"
 
 # Install pnpm
 RUN npm i -g pnpm
