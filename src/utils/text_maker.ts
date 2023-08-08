@@ -7,7 +7,19 @@ import Config from '@/utils/config'
 // load env
 Config
 
+const CHUNK_SIZE = 3
+const MAX_MATCH_LENGTH = 2
 const emojiRegex = /:[0-9A-z_\-]+:/
+const endLetters = ["\n", "。", "　"]
+
+const match_length = ():number => {
+  const n = 5
+  const m = 13
+  const min = 1
+  //なんかいい感じの重み付きランダムみたいなあれを作る
+  //sample: https://www.geogebra.org/graphing/kne365xj
+  return Math.floor((MAX_MATCH_LENGTH - min) * Math.round(n * 2 * (Math.atan(m * Math.random())) / Math.PI) / n) + min
+}
 
 function sanitizeLoop<T extends mfm.MfmNode['type'], N extends mfm.NodeType<T>>(node: N):Array<N> {
   const inlineTypes: mfm.MfmNode['type'][] = ['unicodeEmoji', 'emojiCode', 'bold', 'small', 'italic', 'strike', 'inlineCode', 'mathInline', 'mention', 'hashtag', 'url', 'link', 'fn', 'plain', 'text']
@@ -66,14 +78,13 @@ function tokenize(mfm:Array<mfm.MfmNode>):Array<string> {
 }
 
 function createTokenChunk(tokens: Array<string>):Array<Array<string>> {
-  const CHUNK_SIZE = 3
   if (!tokens || tokens.length <= 0) return []
   if (tokens.length < CHUNK_SIZE) return [[...tokens]]
   let lines:Array<Array<string>> = [[]]
   tokens.forEach((t)=> {
     const lastIdx = lines.length - 1
     lines[lastIdx].push(t)
-    if (["\n", "。", "　"].includes(t)) {
+    if (endLetters.includes(t)) {
       lines.push([])
     }
   })
@@ -82,12 +93,6 @@ function createTokenChunk(tokens: Array<string>):Array<Array<string>> {
     line.forEach((token, i, arr) =>{
       if (i > arr.length - CHUNK_SIZE && token === "\n") return
       let res = arr.slice(i, i + CHUNK_SIZE)
-      res = res.map((word, idx) => {
-        if ( idx > 0 && res[idx - 1].match(emojiRegex) && word.match(/^[0-9A-z]+.*/) ) {
-          return` ${word}`
-        }
-        return word
-      })
       chunks.push(res)
     })
   })
@@ -95,39 +100,53 @@ function createTokenChunk(tokens: Array<string>):Array<Array<string>> {
   return chunks
 }
 
-function selectChunk(chunks:Array<Array<string>>, start:string):Array<string> {
-  let matched = chunks.filter(chunk => chunk[0] === start)
+function selectChunk(chunks:Array<Array<string>>, start:Array<string>):Array<string> {
+  let matched = chunks.filter(chunk => start.every((el, i) => chunk?.[i] === el)).filter(chunk => chunk.length !== start.length)
+  if (matched.length === 0) return ['\n']
   let selectedIdx = Math.floor(Math.random() * matched.length)
 
   return matched[selectedIdx]
 }
 
 function createResultChunk(chunks:Array<Array<string>>, start: Array<string>) {
-  let result = [start]
+  let result:Array<[number, Array<string>]> = [[0, start]]
 
   let cnt = 0
-  while(cnt < 50 && !["\n",'。',"　"].includes(result?.slice(-1)?.[0]?.slice(-1)?.[0])) {
-    const lastChunk = result.slice(-1)?.[0];
-    if (lastChunk === undefined) break;
-    const lastWord = lastChunk[lastChunk.length - 1]
-    let selected = selectChunk(chunks, lastWord)
-    if (lastWord.match(emojiRegex) && selected?.[1]?.match(/^[0-9A-z]+.*/)) {
-      selected[1] = ` ${selected[1]}`
+  // cnt条件未満または最後のチャンクの最後のトークンが指定された文字列でないとき
+  while(cnt < 50 && !["\n",'。',"　"].includes(result?.slice(-1)?.[0]?.[1]?.slice(-1)?.[0])) {
+    const this_match_length = match_length()
+    if (result.length > 0) {
+      const lastChunk = result[result.length - 1]
+      const lastWords = lastChunk[1].slice(-this_match_length)
+      let selected = selectChunk(chunks, lastWords)
+      result.push([this_match_length, selected])
+
+      cnt += 1
     }
-    result.push(selected)
-    cnt += Math.floor(Math.random() * 3) + 1
   }
   return result
 }
 
-function chunkToString(chunks:Array<Array<String>>):string {
+function chunkToString(chunks:Array<[number, Array<string>]>):string {
   if (chunks.length < 1) return ''
-  if (chunks.length === 1) return chunks[0].join('')
 
-  return [
-    chunks[0].join(''),
-    chunks.slice(1).map(t => t.slice(1)?.join('') || '').join('')
-  ].join('')
+  let _chunks = chunks.map((chunk) => {
+    return chunk[1].map((word, i, words) => {
+      if ( i <= chunk[0] - 1 ) return ''
+      if (words?.[i-1]?.match(emojiRegex) && word.match(/^[0-9A-z]+.*/)) {
+        return `𝅳${word}`
+      }
+      if (words?.[i-1]?.match(/^[0-9A-z.!]{2,}/) && word.match(/^[0-9A-z.!]+/)) {
+        // English
+        return ` ${word}`
+      }
+      return word
+    })
+  })
+
+  if (_chunks.length === 1) return _chunks[0].join('')
+
+  return _chunks.map(t => t.join('')).join('')
 }
 
 function createChunksFromInput(text:string) {
@@ -136,9 +155,29 @@ function createChunksFromInput(text:string) {
   return createTokenChunk(tokenize(sanitized))
 }
 
-export function createTextFromInputs(textInputs: Array<string>) {
-  const chunksArray = textInputs.map(txt => createChunksFromInput(txt))
-  let startWord = chunksArray[Math.floor(Math.random() * chunksArray.length)][0]
+function assertPairBrackets(text:string):boolean {
+  const brackets:Array<string|[string, string]|[RegExp, RegExp]> = ['「」', '【】', [/\[/, /\]/], [/\(/, /\)/], '『』', '{}', '（）']
+  return brackets.every(bracket => [...text.matchAll(new RegExp(bracket[0], 'g'))].length === [...text.matchAll(new RegExp(bracket[1], 'g'))].length)
+}
 
-  return chunkToString(createResultChunk(chunksArray.flat(1), startWord))
+export function createTextFromInputs(textInputs: Array<string>) {
+  const chunks = textInputs.filter(i => !i.match(/^[0-9A-z\n ]+$/)).map(txt => createChunksFromInput(txt))
+  //  2 + chunk.lengthトークンの文字列
+  let chunksHasLotToken = chunks.filter(chunk => chunk.length >= 4 && chunk.length < 500 && !endLetters.includes(chunk[0].slice(-1)?.[0]))
+
+  let result:string|null = null
+  const retry_condition = () => {
+    return result === null ||
+    !assertPairBrackets(result)
+  }
+
+  while(retry_condition()){
+    let startTarget = chunksHasLotToken.length >= 1 ? chunksHasLotToken : chunks
+    let startWord = startTarget[Math.floor(Math.random() * startTarget.length)][0]
+
+    result = chunkToString(createResultChunk(chunks.flat(1), startWord))
+    let same = textInputs.find((i) => i.includes(result || ''))
+    if (same) result = null
+  }
+  return result
 }
