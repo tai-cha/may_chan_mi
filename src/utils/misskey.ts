@@ -32,6 +32,10 @@ export class Misskey {
   static request = async <E extends keyof Mi.Endpoints, P extends Mi.Endpoints[E]['req']>(endpoint: E, params:P) => {
     return await this.getOrCreateApiClient().request(endpoint, params)
   }
+
+  static isUserDetailed = (user: Mi.entities.User): user is Mi.entities.UserDetailed => {
+    return ('isBot' in user)
+  }
 }
 
 export default { Misskey }
