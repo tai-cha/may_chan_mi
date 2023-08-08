@@ -22,7 +22,7 @@ const getNotes = async ():Promise<Array<Note>> => {
   console.log('loading notes...')
   let notes = (await retry(
     async ()=> {
-      const req = await Misskey.request('notes/local-timeline', options)
+      const req = await Misskey.request('notes/hybrid-timeline', options)
 
       raiseOmittedTimeline(req)
       
@@ -35,7 +35,7 @@ const getNotes = async ():Promise<Array<Note>> => {
   while (notes.length > 500) {
     const newNotes = (await retry(async ()=> {
         console.log(`Getting notes: {sinceId: ${getLastNote(notes).id}}`)
-        const req = await Misskey.request('notes/local-timeline', {
+        const req = await Misskey.request('notes/hybrid-timeline', {
           sinceId: getLastNote(notes).id,
           ...options
         })
