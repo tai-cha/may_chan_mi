@@ -20,22 +20,22 @@ const getNotes = async ():Promise<Array<Note>> => {
     limit: 100
   }
   console.log('loading notes...')
-  let notes = await retry(
+  let notes = (await retry(
     async ()=> {
-      const req = await Misskey.request('notes/hybrid-timeline', options)
+      const req = await Misskey.request('notes/local-timeline', options)
 
       raiseOmittedTimeline(req)
       
       return req
     },
     { retries: 10, onRetry: ()=> { console.log("retrying...") } }
-  )
+  )).filter(note => !Misskey.isUserDetailed(note.user) || note.user.isBot !== true)
   if (notes.length === 0) return []
 
-  while (notes.length > 300) {
-    const newNotes = await retry(async ()=> {
+  while (notes.length > 500) {
+    const newNotes = (await retry(async ()=> {
         console.log(`Getting notes: {sinceId: ${getLastNote(notes).id}}`)
-        const req = await Misskey.request('notes/hybrid-timeline', {
+        const req = await Misskey.request('notes/local-timeline', {
           sinceId: getLastNote(notes).id,
           ...options
         })
@@ -51,7 +51,7 @@ const getNotes = async ():Promise<Array<Note>> => {
           console.debug(err)
         }
       }
-    )
+    )).filter(note => !Misskey.isUserDetailed(note.user) || note.user.isBot !== true)
     notes = notes.concat(newNotes)
     console.log(notes.length)
     await new Promise((resolve) => setTimeout(resolve, 700))
