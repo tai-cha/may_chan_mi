@@ -178,7 +178,7 @@ export function createTextFromInputs(textInputs: Array<string>) {
 
     result = chunkToString(createResultChunk(chunks.flat(1), startWord))
     let same = textInputs.find((i) => i.includes(result || ''))
-    if (same !== undefined) needs_retry = false 
+    if (same == undefined) needs_retry = false
   }
   return result
 }
