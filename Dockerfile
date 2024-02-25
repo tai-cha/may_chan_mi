@@ -1,5 +1,5 @@
 # syntax = docker/dockerfile:1.2
-FROM node:18.17.0
+FROM node:20.10.0
 
 WORKDIR /
 

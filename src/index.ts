@@ -1,8 +1,8 @@
-import { Note } from "@/@types"
-import { createTextFromInputs } from '@/utils/text_maker'
-import { Misskey } from '@/utils/misskey'
+import type { Note } from "@/@types/index.js"
+import { createTextFromInputs } from '@/utils/text_maker.js'
+import { Misskey } from '@/utils/misskey.js'
 import retry from 'async-retry'
-import { isStringArray } from '@/utils/type_checker';
+import { isFiniteAndPositive } from '@/utils/type_checker.js';
 
 const raiseOmittedTimeline = (notes:Note[]) => {
   // misskey.ioでノートが取得できない場合にエラー扱いしてリトライするためにエラーを起こす
@@ -14,30 +14,28 @@ const raiseOmittedTimeline = (notes:Note[]) => {
 
 const getLastNote = (notes:Array<Note>) => notes.slice(-1)[0];
 
-const getNotes = async ():Promise<Array<Note>> => {
-  const options = {
+const getNotes = async (options?:{ numToTake?: number }):Promise<Array<Note>> => {
+  const numToTake = options !== undefined && isFiniteAndPositive(options.numToTake) ? options.numToTake : 500
+
+  const requestOptions = {
     excludeNsfw: false,
     limit: 100
   }
   console.log('loading notes...')
-  let notes = (await retry(
-    async ()=> {
-      const req = await Misskey.request('notes/hybrid-timeline', options)
+  let notes: Note[] = []
+  let untilId : string | undefined = undefined
 
-      raiseOmittedTimeline(req)
-      
-      return req
-    },
-    { retries: 10, onRetry: ()=> { console.log("retrying...") } }
-  )).filter(note => !Misskey.isUserDetailed(note.user) || note.user.isBot !== true)
-  if (notes.length === 0) return []
-
-  while (notes.length > 500) {
+  while (notes.length < numToTake) {
     const newNotes = (await retry(async ()=> {
-        console.log(`Getting notes: {sinceId: ${getLastNote(notes).id}}`)
+        if (notes.length > 0) {
+          untilId = getLastNote(notes).id
+          console.log(`Getting notes: {untilId: ${untilId}}`)
+        } else {
+          console.log('Getting first notes...')
+        }
         const req = await Misskey.request('notes/hybrid-timeline', {
-          sinceId: getLastNote(notes).id,
-          ...options
+          untilId,
+          ...requestOptions
         })
 
         raiseOmittedTimeline(req)
@@ -53,6 +51,7 @@ const getNotes = async ():Promise<Array<Note>> => {
       }
     )).filter(note => !Misskey.isUserDetailed(note.user) || note.user.isBot !== true)
     notes = notes.concat(newNotes)
+    if (notes.length <= 0) break;
     console.log(notes.length)
     await new Promise((resolve) => setTimeout(resolve, 700))
   }
@@ -61,17 +60,24 @@ const getNotes = async ():Promise<Array<Note>> => {
 }
 
 async function create():Promise<string | null> {
-  const notes = await getNotes();
-  let texts = notes.filter(note => note.text !== null && note.cw == null).map(note => note.text)
-  if (isStringArray(texts)) {
+  const notes = await getNotes({ numToTake: 700 });
+  let texts: string[] = notes.filter(note => note.cw == null && note.visibility == 'public').map(note => note.text).filter((text): text is string => text !== null)
     return createTextFromInputs(texts)
-  } else {
-    return null
-  }
 }
 
 (async ()=>{
-  let text = await create()
+  let text = await retry(create, {
+              retries: 3,
+              minTimeout: 5000,
+              onRetry: (err, num) => {
+                console.log(`Retrying: create text...${num}`)
+                console.debug(err)
+              }
+  }).catch(err => {
+    console.log("テキスト生成の失敗が既定の回数を超えました")
+    console.debug(err)
+    return null
+  })
   if (text !== null) {
     await retry(async() => {
       return await Misskey.postNote(text || '')
@@ -82,8 +88,9 @@ async function create():Promise<string | null> {
         console.log(`Retrying: note posting...${num}`)
         console.debug(err)
       }
-    }).then(async n => {
-      console.log('投稿完了')
+    }).then(async () => {
+      if (process.env?.NODE_ENV !== 'development') console.log('投稿完了')
+      else console.log('[DEV] 投稿処理完了')
     }).catch(err => {
       console.log("ノート投稿の失敗が既定の回数を超えました")
       console.log(err)

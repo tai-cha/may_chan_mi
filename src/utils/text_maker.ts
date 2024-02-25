@@ -1,14 +1,14 @@
 import * as mfm from 'mfm-js'
-import { isMfmBlock } from 'mfm-js/built/node';
+import { isMfmBlock } from 'mfm-js/built/node.js';
 import { wakatiSync } from "@enjoyjs/node-mecab"
-import { isStringArray } from '@/utils/type_checker';
-import Config from '@/utils/config'
+import { isStringArray } from '@/utils/type_checker.js';
+import Config from '@/utils/config.js'
 
 // load env
 Config
 
-const CHUNK_SIZE = 3
-const MAX_MATCH_LENGTH = 2
+const CHUNK_SIZE = 2
+const MAX_MATCH_LENGTH = 1
 const emojiRegex = /:[0-9A-z_\-]+:/
 const endLetters = ["\n", "。", "　"]
 
@@ -36,13 +36,14 @@ function sanitizeLoop<T extends mfm.MfmNode['type'], N extends mfm.NodeType<T>>(
     return [node]
   }
 
-  if (node.children && node.children.length > 0) {
-    if (isMfmNodeArray(node.children)) {
-      let children:Array<N> = node.children
-      return children.map(sanitizeLoop).flat()
-    } else {
-      return []
-    }
+  // FIXME: ruby関数対応
+  if (node.type == 'fn' && node.props.name == 'ruby') {
+    return []
+  }
+
+  if (node.children && node.children.length > 0 && isMfmNodeArray(node.children) ) {
+    let children:Array<N> = node.children
+    return children.map(sanitizeLoop).flat()
   } else {
     return []
   }
@@ -113,7 +114,7 @@ function createResultChunk(chunks:Array<Array<string>>, start: Array<string>) {
 
   let cnt = 0
   // cnt条件未満または最後のチャンクの最後のトークンが指定された文字列でないとき
-  while(cnt < 50 && !["\n",'。',"　"].includes(result?.slice(-1)?.[0]?.[1]?.slice(-1)?.[0])) {
+  while(cnt < 50 && !['。'].includes(result?.slice(-1)?.[0]?.[1]?.slice(-1)?.[0])) {
     const this_match_length = match_length()
     if (result.length > 0) {
       const lastChunk = result[result.length - 1]
@@ -162,22 +163,22 @@ function assertPairBrackets(text:string):boolean {
 
 export function createTextFromInputs(textInputs: Array<string>) {
   const chunks = textInputs.filter(i => !i.match(/^[0-9A-z\n ]+$/)).map(txt => createChunksFromInput(txt))
-  //  2 + chunk.lengthトークンの文字列
-  let chunksHasLotToken = chunks.filter(chunk => chunk.length >= 4 && chunk.length < 500 && !endLetters.includes(chunk[0].slice(-1)?.[0]))
-
-  let result:string|null = null
+  let result:string = ''
+  let needs_retry = true
   const retry_condition = () => {
-    return result === null ||
-    !assertPairBrackets(result)
+    return result === '' ||
+    !assertPairBrackets(result) ||
+    needs_retry ||
+    result.length < 5
   }
 
   while(retry_condition()){
-    let startTarget = chunksHasLotToken.length >= 1 ? chunksHasLotToken : chunks
+    let startTarget = chunks
     let startWord = startTarget[Math.floor(Math.random() * startTarget.length)][0]
 
     result = chunkToString(createResultChunk(chunks.flat(1), startWord))
     let same = textInputs.find((i) => i.includes(result || ''))
-    if (same) result = null
+    if (same !== undefined) needs_retry = false 
   }
   return result
 }

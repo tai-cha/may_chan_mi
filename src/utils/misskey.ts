@@ -1,10 +1,10 @@
+import * as Config from '@/utils/config.js'
 import * as Mi from 'misskey-js'
-import * as Config from '@/utils/config'
 
 export class Misskey {
   static #client:Mi.api.APIClient | undefined = undefined
   static createApiClient():Mi.api.APIClient {
-    this.#client = new Mi.api.APIClient(Config.server)
+    this.#client = new Mi.api.APIClient( Config.server ) as Mi.api.APIClient
     return this.#client
   }
   static #isApiClient(client: Mi.api.APIClient | undefined): client is Exclude<typeof client, undefined> {
@@ -29,9 +29,8 @@ export class Misskey {
     console.log(post)
     return post
   }
-  static request = async <E extends keyof Mi.Endpoints, P extends Mi.Endpoints[E]['req']>(endpoint: E, params:P) => {
-    return await this.getOrCreateApiClient().request(endpoint, params)
-  }
+
+  static request = this.getOrCreateApiClient().request.bind(this.getOrCreateApiClient())
 
   static isUserDetailed = (user: Mi.entities.User): user is Mi.entities.UserDetailed => {
     return ('isBot' in user)
