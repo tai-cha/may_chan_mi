@@ -41,7 +41,9 @@ function sanitizeLoop<T extends mfm.MfmNode['type'], N extends mfm.NodeType<T>>(
     return []
   }
 
-  if (node.children && node.children.length > 0 && isMfmNodeArray(node.children) ) {
+  if (['url', 'mention', 'hashtag', 'link'].includes(node.type)) {
+    return []
+  } else if (node.children && node.children.length > 0 && isMfmNodeArray(node.children) ) {
     let children:Array<N> = node.children
     return children.map(sanitizeLoop).flat()
   } else {
